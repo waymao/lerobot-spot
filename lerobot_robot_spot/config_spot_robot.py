@@ -41,6 +41,9 @@ class SpotRobotConfig(RobotConfig):
     image_width: int = 0   # 0 => keep native width
     image_height: int = 0  # 0 => keep native height
 
+    # Force-take the lease from another client instead of a normal acquire.
+    force_take_lease: bool = False
+
     # You can add more config fields later (e.g. max velocities, arm limits).
     extra: Dict[str, float] = field(default_factory=dict)
 

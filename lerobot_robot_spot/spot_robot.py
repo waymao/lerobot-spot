@@ -135,7 +135,10 @@ class SpotRobot(Robot):
         )
 
         # 3) Lease and power
-        self._lease = self._lease_client.acquire()
+        if self.config.force_take_lease:
+            self._lease = self._lease_client.take()
+        else:
+            self._lease = self._lease_client.acquire()
         self._robot.power_on(timeout_sec=30)
         blocking_stand(self._command_client, timeout_sec=15)
 
@@ -372,7 +375,7 @@ class SpotRobot(Robot):
                 "arm.pose.qz": 0.0,
             }
 
-        return {
+        result = {
             "arm.pose.x": float(body_tform_hand.x),
             "arm.pose.y": float(body_tform_hand.y),
             "arm.pose.z": float(body_tform_hand.z),
@@ -382,15 +385,10 @@ class SpotRobot(Robot):
             "arm.pose.qz": float(body_tform_hand.rot.z),
         }
 
-    def _get_gripper_state(self) -> Dict[str, float]:
-        """Read gripper open percentage from ManipulatorState."""
-        if self._state_client is None:
-            raise ConnectionError("RobotStateClient not initialized.")
-        state = self._state_client.get_robot_state()
-        pct = 0.0
-        if state.HasField("manipulator_state"):
-            pct = float(state.manipulator_state.gripper_open_percentage)
-        return {"arm.gripper_open_percentage": pct}
+        if state.manipulator_state:
+            result["arm.gripper_open_percentage"] = float(state.manipulator_state.gripper_open_percentage)
+
+        return result
 
     def _get_images(self) -> Dict[str, np.ndarray]:
         """
@@ -477,7 +475,6 @@ class SpotRobot(Robot):
         obs.update(self._get_base_state())
 
         obs.update(self._get_hand_pose())
-        obs.update(self._get_gripper_state())
 
         images = self._get_images()
         for src in self._image_sources:
@@ -625,5 +622,7 @@ class SpotRobot(Robot):
             "arm.pose.qz": qz,
             "arm.gripper_open_percentage": max(gripper_pct, 0.0),
         }
+        if gripper_pct is not None:
+            sent_action["arm.gripper_open_percentage"] = gripper_pct
 
         return sent_action
