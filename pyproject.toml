@@ -1,0 +1,16 @@
+[build-system]
+requires = ["setuptools>=61"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "lerobot_robot_spot"
+version = "0.0.1"
+description = "LeRobot Plugin: Boston Dynamics Spot Robot"
+dependencies = [
+  "lerobot>=0.4.4",
+  "bosdyn_client",
+  "bosdyn_api",
+]
+
+[tool.setuptools.packages.find]
+where = ["."]

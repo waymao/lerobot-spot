@@ -11,3 +11,10 @@ data/
 .DS_Store
 .vscode/
 .idea/
+
+build/
+dist/
+*.egg-info/
+**/*.egg-info/
+*.egg
+.eggs/

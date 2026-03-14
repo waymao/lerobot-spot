@@ -17,6 +17,8 @@ Controls (press repeatedly, commands are incremental):
     u/j : x +/-
     i/k : y +/-
     o/l : z +/-
+    y   : x- y+ (diagonal)
+    h   : x+ y- (diagonal)
 
   Arm orientation:
     7/4 : roll +/-
@@ -203,7 +205,7 @@ def wait_for_manual_reset() -> bool:
 def print_help() -> None:
     print("\nKeyboard teleop (pose target)")
     print("  base: w/s vx, z/c vy, a/d vyaw, <space> stop base")
-    print("  pos : u/j x, i/k y, o/l z")
+    print("  pos : u/j x, i/k y, o/l z, y x-y+, h x+y-")
     print("  rot : 7/4 roll, 8/5 pitch, 9/6 yaw")
     print("  grip: g open(100%), b half(50%), t close(0%)")
     print("  arm : r reset target to current observed hand pose, p reset to startup pose")
@@ -265,6 +267,12 @@ def update_state_from_keys(
         elif ch == "i":
             arm_target["arm.pose.y"] += arm_step_xyz
         elif ch == "k":
+            arm_target["arm.pose.y"] -= arm_step_xyz
+        elif ch == "y":
+            arm_target["arm.pose.x"] -= arm_step_xyz
+            arm_target["arm.pose.y"] += arm_step_xyz
+        elif ch == "h":
+            arm_target["arm.pose.x"] += arm_step_xyz
             arm_target["arm.pose.y"] -= arm_step_xyz
         elif ch == "o":
             arm_target["arm.pose.z"] += arm_step_xyz
@@ -411,8 +419,8 @@ def parse_args() -> argparse.Namespace:
     p.add_argument("--base-step-vx", type=float, default=0.05)
     p.add_argument("--base-step-vy", type=float, default=0.05)
     p.add_argument("--base-step-vyaw", type=float, default=0.08)
-    p.add_argument("--arm-step-xyz", type=float, default=0.02)
-    p.add_argument("--arm-step-rpy-deg", type=float, default=5.0)
+    p.add_argument("--arm-step-xyz", type=float, default=0.04)
+    p.add_argument("--arm-step-rpy-deg", type=float, default=10.0)
     p.add_argument("--max-vx", type=float, default=0.35)
     p.add_argument("--max-vy", type=float, default=0.20)
     p.add_argument("--max-vyaw", type=float, default=0.50)
