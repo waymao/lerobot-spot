@@ -18,3 +18,5 @@ dist/
 **/*.egg-info/
 *.egg
 .eggs/
+
+outputs/
