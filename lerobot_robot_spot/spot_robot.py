@@ -1,4 +1,5 @@
 from __future__ import annotations
+
 """
 LeRobot Robot wrapper for Boston Dynamics Spot.
 
@@ -32,12 +33,17 @@ from typing import Any, Dict, List, Tuple
 import numpy as np
 from bosdyn.api import image_pb2
 from bosdyn.client import create_standard_sdk
-from bosdyn.client.frame_helpers import BODY_FRAME_NAME, HAND_FRAME_NAME, ODOM_FRAME_NAME, get_a_tform_b
+from bosdyn.client.frame_helpers import (
+    BODY_FRAME_NAME,
+    HAND_FRAME_NAME,
+    ODOM_FRAME_NAME,
+    get_a_tform_b,
+)
 from bosdyn.client.image import ImageClient
 from bosdyn.client.lease import LeaseClient
 from bosdyn.client.robot_command import (
-    RobotCommandClient,
     RobotCommandBuilder,
+    RobotCommandClient,
     blocking_stand,
 )
 from bosdyn.client.robot_state import RobotStateClient
@@ -47,8 +53,7 @@ from .config_spot_robot import SpotRobotConfig
 
 
 class SpotRobot(Robot):
-    """
-    LeRobot Robot implementation for Boston Dynamics Spot.
+    """LeRobot Robot implementation for Boston Dynamics Spot.
 
     This class uses the standard BD SDK services (RobotState, RobotCommand,
     Image, Lease) to control the robot and read state, while presenting a
@@ -63,8 +68,7 @@ class SpotRobot(Robot):
     # ------------------------------------------------------------------
 
     def __init__(self, config: SpotRobotConfig):
-        """
-        Initialize the SpotRobot wrapper.
+        """Initialize the SpotRobot wrapper.
 
         Only stores configuration and prepares internal structures.
         Actual connection happens in connect().
@@ -104,8 +108,7 @@ class SpotRobot(Robot):
         return sdk_ok and img_ok
 
     def connect(self, calibrate: bool = True) -> None:
-        """
-        Connect to Spot and prepare for control.
+        """Connect to Spot and prepare for control.
 
         Steps:
             1. Create SDK and Robot objects.
@@ -122,16 +125,16 @@ class SpotRobot(Robot):
 
         # 2) Service clients
         self._state_client = self._robot.ensure_client(
-            RobotStateClient.default_service_name
+            RobotStateClient.default_service_name,
         )
         self._lease_client = self._robot.ensure_client(
-            LeaseClient.default_service_name
+            LeaseClient.default_service_name,
         )
         self._command_client = self._robot.ensure_client(
-            RobotCommandClient.default_service_name
+            RobotCommandClient.default_service_name,
         )
         self._image_client = self._robot.ensure_client(
-            ImageClient.default_service_name
+            ImageClient.default_service_name,
         )
 
         # 3) Lease and power
@@ -148,8 +151,7 @@ class SpotRobot(Robot):
         self.configure()
 
     def disconnect(self) -> None:
-        """
-        Release lease and power down Spot.
+        """Release lease and power down Spot.
         Should be called in a finally block to ensure safe shutdown.
         """
         if self._lease_client is not None and self._lease is not None:
@@ -173,19 +175,18 @@ class SpotRobot(Robot):
         self._sdk = None
 
     def disconnect_keep_powered(self) -> None:
-        """
-        Release the SDK lease and close clients WITHOUT powering off Spot.
+        """Release the SDK lease and close clients WITHOUT powering off Spot.
 
         Use this when you want to end a LeRobot session but leave Spot
         standing so a human operator or another process can take over.
         Spot will remain standing until its own sit-down timeout triggers
         or another client acquires the lease.
         """
-        if self._lease_client is not None and self._lease is not None:
-            try:
-                self._lease_client.return_lease(self._lease)
-            except Exception:
-                pass
+        # if self._lease_client is not None and self._lease is not None:
+        #     try:
+        #         self._lease_client.return_lease(self._lease)
+        #     except Exception:
+        #         pass
 
         self._state_client = None
         self._lease_client = None
@@ -209,8 +210,7 @@ class SpotRobot(Robot):
         return
 
     def configure(self) -> None:
-        """
-        Configuration hook.
+        """Configuration hook.
         You may use this to unstow the arm, etc. Keep this idempotent.
         """
         return
@@ -222,11 +222,11 @@ class SpotRobot(Robot):
     @property
     def _base_ft(self) -> Dict[str, type]:
         return {
-            "base.pos_x":   float,
-            "base.pos_y":   float,
-            "base.yaw":     float,
-            "base.vel_x":   float,
-            "base.vel_y":   float,
+            "base.pos_x": float,
+            "base.pos_y": float,
+            "base.yaw": float,
+            "base.vel_x": float,
+            "base.vel_y": float,
             "base.vel_yaw": float,
         }
 
@@ -245,7 +245,7 @@ class SpotRobot(Robot):
     @property
     def _camera_ft(self) -> Dict[str, Tuple[int, int, int]]:
         # Heights/widths are unknown until first image; use None as placeholder.
-        return {src: (None, None, 3) for src in self._image_sources}
+        return dict.fromkeys(self._image_sources, (None, None, 3))
 
     @property
     def _gripper_ft(self) -> Dict[str, type]:
@@ -260,8 +260,7 @@ class SpotRobot(Robot):
     # accesses it as an attribute (robot.action_features).
     @property
     def action_features(self) -> Dict[str, Any]:
-        """
-        Full action feature specification.
+        """Full action feature specification.
         Base:
             base.vx   : linear velocity x (m/s)
             base.vy   : linear velocity y (m/s)
@@ -270,8 +269,8 @@ class SpotRobot(Robot):
             arm.pose.{x,y,z,qw,qx,qy,qz} : target hand pose in odom frame
         """
         base_action = {
-            "base.vx":   float,
-            "base.vy":   float,
+            "base.vx": float,
+            "base.vy": float,
             "base.vyaw": float,
         }
         return {**base_action, **self._arm_pose_ft, "arm.gripper_open_percentage": float}
@@ -281,8 +280,7 @@ class SpotRobot(Robot):
     # ------------------------------------------------------------------
 
     def _build_image_source_list(self) -> List[str]:
-        """
-        Build list of image source names to fetch from Spot.
+        """Build list of image source names to fetch from Spot.
 
         If SpotRobotConfig.image_sources is non-empty, use it as-is.
         Otherwise derive from high-level flags:
@@ -306,8 +304,7 @@ class SpotRobot(Robot):
     # ------------------------------------------------------------------
 
     def _get_base_state(self) -> Dict[str, float]:
-        """
-        Read base pose and velocity from RobotState.
+        """Read base pose and velocity from RobotState.
 
         Uses kinematic_state in the vision frame and approximates yaw from
         the body transform quaternion.
@@ -319,7 +316,9 @@ class SpotRobot(Robot):
         kin = state.kinematic_state
         tf = kin.transforms_snapshot
 
-        body_edge = tf.child_to_parent_edge_map.get("odom", None)  # odom = world-frame pose; body/flat_body are always (0,0,0)
+        body_edge = tf.child_to_parent_edge_map.get(
+            "odom", None
+        )  # odom = world-frame pose; body/flat_body are always (0,0,0)
         if body_edge is None:
             pos_x = pos_y = yaw = 0.0
         else:
@@ -339,16 +338,16 @@ class SpotRobot(Robot):
         if vel is None:
             vel_x = vel_y = vel_yaw = 0.0
         else:
-            vel_x   = vel.linear.x
-            vel_y   = vel.linear.y
+            vel_x = vel.linear.x
+            vel_y = vel.linear.y
             vel_yaw = vel.angular.z
 
         return {
-            "base.pos_x":   float(pos_x),
-            "base.pos_y":   float(pos_y),
-            "base.yaw":     float(yaw),
-            "base.vel_x":   float(vel_x),
-            "base.vel_y":   float(vel_y),
+            "base.pos_x": float(pos_x),
+            "base.pos_y": float(pos_y),
+            "base.yaw": float(yaw),
+            "base.vel_x": float(vel_x),
+            "base.vel_y": float(vel_y),
             "base.vel_yaw": float(vel_yaw),
         }
 
@@ -386,13 +385,14 @@ class SpotRobot(Robot):
         }
 
         if state.manipulator_state:
-            result["arm.gripper_open_percentage"] = float(state.manipulator_state.gripper_open_percentage)
+            result["arm.gripper_open_percentage"] = float(
+                state.manipulator_state.gripper_open_percentage
+            )
 
         return result
 
     def _get_images(self) -> Dict[str, np.ndarray]:
-        """
-        Fetch images from Spot's onboard cameras.
+        """Fetch images from Spot's onboard cameras.
 
         Spot often returns JPEG-compressed data even when RGB_U8 is requested
         (especially for fisheye and hand cameras). This method handles both:
@@ -402,6 +402,7 @@ class SpotRobot(Robot):
 
         Returns:
             dict mapping image_source_name -> np.ndarray(H, W, 3), uint8.
+
         """
         if self._image_client is None:
             raise ConnectionError("ImageClient not initialized.")
@@ -441,7 +442,7 @@ class SpotRobot(Robot):
                 if h <= 0 or w <= 0 or data.size != h * w:
                     continue
                 grey = data.reshape((h, w))
-                rgb  = cv2.cvtColor(grey, cv2.COLOR_GRAY2RGB)
+                rgb = cv2.cvtColor(grey, cv2.COLOR_GRAY2RGB)
                 images[resp.source.name] = rgb
                 continue
 
@@ -462,8 +463,7 @@ class SpotRobot(Robot):
     # ------------------------------------------------------------------
 
     def get_observation(self) -> Dict[str, Any]:
-        """
-        Collect one observation from Spot.
+        """Collect one observation from Spot.
 
         Includes base pose/velocity, arm pose, and camera images.
         """
@@ -487,8 +487,7 @@ class SpotRobot(Robot):
     # ------------------------------------------------------------------
 
     def send_action(self, action: Dict[str, Any]) -> Dict[str, Any]:
-        """
-        Send a combined base + arm command to Spot.
+        """Send a combined base + arm command to Spot.
 
         Action dict keys:
             base.vx   : linear velocity x (m/s)
@@ -510,16 +509,16 @@ class SpotRobot(Robot):
         # ----------------------
         # Base velocity command
         # ----------------------
-        vx   = float(action.get("base.vx",   0.0))
-        vy   = float(action.get("base.vy",   0.0))
+        vx = float(action.get("base.vx", 0.0))
+        vy = float(action.get("base.vy", 0.0))
         vyaw = float(action.get("base.vyaw", 0.0))
 
-        max_vx   = float(self.config.extra.get("max_vx",   0.5))
-        max_vy   = float(self.config.extra.get("max_vy",   0.3))
+        max_vx = float(self.config.extra.get("max_vx", 0.5))
+        max_vy = float(self.config.extra.get("max_vy", 0.3))
         max_vyaw = float(self.config.extra.get("max_vyaw", 0.8))
 
-        vx   = max(-max_vx,   min(max_vx,   vx))
-        vy   = max(-max_vy,   min(max_vy,   vy))
+        vx = max(-max_vx, min(max_vx, vx))
+        vy = max(-max_vy, min(max_vy, vy))
         vyaw = max(-max_vyaw, min(max_vyaw, vyaw))
 
         # FIX 3: synchro_se2_velocity_command takes v_x, v_y, v_rot as
@@ -535,7 +534,8 @@ class SpotRobot(Robot):
         # 0.5 s from now, converted to robot time via time_sync.
         end_time_secs = time.time() + 0.5  # tune to your control-loop period
         self._command_client.robot_command(
-            mobility_cmd, end_time_secs=end_time_secs
+            mobility_cmd,
+            end_time_secs=end_time_secs,
         )
 
         # ----------------------
@@ -610,8 +610,8 @@ class SpotRobot(Robot):
 
         # Return the action actually sent after clamping
         sent_action: Dict[str, Any] = {
-            "base.vx":   vx,
-            "base.vy":   vy,
+            "base.vx": vx,
+            "base.vy": vy,
             "base.vyaw": vyaw,
             "arm.pose.x": x,
             "arm.pose.y": y,
