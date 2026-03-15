@@ -143,7 +143,7 @@ class SpotRobot(Robot):
         else:
             self._lease = self._lease_client.acquire()
         self._robot.power_on(timeout_sec=30)
-        blocking_stand(self._command_client, timeout_sec=15)
+        blocking_stand(self._command_client, timeout_sec=30)
 
         # 4) Calibration / configuration hooks for compatibility
         if calibrate:
